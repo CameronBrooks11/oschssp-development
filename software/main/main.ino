@@ -67,7 +67,7 @@ struct ProgramData
   bool sdActive;
   int traStatus;
   bool isInvalid = false;
-  int16_t incr = 0;
+  int16_t incr;
 
   // Getters
   unsigned long getSetDuration() const { return setDuration; }
@@ -161,89 +161,49 @@ ProgramData pData;
 // Increment functions with intermediate variable using setters
 void incrementSetpoint()
 {
-    for (int i = 0; i < NUM_SENSORS; i++)
-    {
-        double newValue = pData.getSetpoint(i) + pData.incr;
-        pData.setSetpoint(i, newValue);
-    }
+  for (int i = 0; i < NUM_SENSORS; i++)
+  {
+    double newValue = pData.getSetpoint(i) + pData.incr;
+    pData.setSetpoint(i, newValue);
+    setPIDPoint(i, pData.getSetpoint(i));
+  } 
 }
 
 void incrementDuration()
 {
-    unsigned long newValue = pData.getSetDuration() + (pData.incr * MINUTE);
-    pData.setSetDuration(newValue);
+  unsigned long newValue = pData.getSetDuration() + (pData.incr * MINUTE);
+  pData.setSetDuration(newValue);
 }
 
 void incrementKp()
 {
-    for (int i = 0; i < NUM_SENSORS; i++)
-    {
-        double newValue = pData.getKp(i) + pData.incr;
-        pData.setKp(i, newValue);
-    }
+  for (int i = 0; i < NUM_SENSORS; i++)
+  {
+    double newValue = pData.getKp(i) + pData.incr;
+    pData.setKp(i, newValue);
+    setPIDTuning(i, pData.getKp(i), pData.getKi(i), pData.getKd(i));
+  }
 }
 
 void incrementKi()
 {
-    for (int i = 0; i < NUM_SENSORS; i++)
-    {
-        double newValue = pData.getKi(i) + pData.incr;
-        pData.setKi(i, newValue);
-    }
+  for (int i = 0; i < NUM_SENSORS; i++)
+  {
+    double newValue = pData.getKi(i) + pData.incr;
+    pData.setKi(i, newValue);
+    setPIDTuning(i, pData.getKp(i), pData.getKi(i), pData.getKd(i));
+  }
 }
 
 void incrementKd()
 {
-    for (int i = 0; i < NUM_SENSORS; i++)
-    {
-        double newValue = pData.getKd(i) + pData.incr;
-        pData.setKd(i, newValue);
-    }
+  for (int i = 0; i < NUM_SENSORS; i++)
+  {
+    double newValue = pData.getKd(i) + pData.incr;
+    pData.setKd(i, newValue);
+    setPIDTuning(i, pData.getKp(i), pData.getKi(i), pData.getKd(i));
+  }
 }
-
-// Decrement functions with intermediate variable using setters
-void decrementSetpoint()
-{
-    for (int i = 0; i < NUM_SENSORS; i++)
-    {
-        double newValue = pData.getSetpoint(i) - pData.incr;
-        pData.setSetpoint(i, newValue);
-    }
-}
-
-void decrementDuration()
-{
-    unsigned long newValue = pData.getSetDuration() - (pData.incr * MINUTE);
-    pData.setSetDuration(newValue);
-}
-
-void decrementKp()
-{
-    for (int i = 0; i < NUM_SENSORS; i++)
-    {
-        double newValue = pData.getKp(i) - pData.incr;
-        pData.setKp(i, newValue);
-    }
-}
-
-void decrementKi()
-{
-    for (int i = 0; i < NUM_SENSORS; i++)
-    {
-        double newValue = pData.getKi(i) - pData.incr;
-        pData.setKi(i, newValue);
-    }
-}
-
-void decrementKd()
-{
-    for (int i = 0; i < NUM_SENSORS; i++)
-    {
-        double newValue = pData.getKd(i) - pData.incr;
-        pData.setKd(i, newValue);
-    }
-}
-
 
 struct CountTimers
 {
@@ -304,9 +264,29 @@ MachineState currMState = STANDBY;
 ThermalRunawayMonitor monitor;
 
 // Blank function, it is attached to the lines so that they become focusable.
-void foofunc()
+void startProcess()
 {
-  return;
+ if (machine.getCurrentState() == standbyState)
+ {
+   SET_PREPARING();
+ }
+}
+
+void skipSubProcess()
+{
+  if (machine.getCurrentState() == prepState)
+  {
+    SET_ACTIVE();
+  }
+  else if (machine.getCurrentState() == activeState)
+  {
+    SET_TERMINATING();
+  }
+}
+
+void returnToStandby()
+{
+  SET_STANDBY();
 }
 
 char currStateName[8] = "standby";
@@ -317,14 +297,15 @@ LiquidLine outputsLine(1, 1, "O:", controlData.outputs[0], ",", controlData.outp
 LiquidLine remDurationLine(10, 1, " R:", pData.remainingDurationMinutes);
 LiquidScreen screenMain(tempsLine, setpointLine, outputsLine, remDurationLine);
 
-LiquidLine currStateLine(1, 0, "State: ", currStateName);
-LiquidLine setTempLine(1, 1, "ST:  ", pData.setpoint[0]);
-LiquidLine setDurationLine(1, 2, "D:   ", pData.setDurationMinutes);
-LiquidLine setKpLine(1, 3, "Kp:  ", pData.Kp[0]);
-LiquidLine setKiLine(1, 4, "Ki:  ", pData.Ki[0]);
-LiquidLine setKdLine(1, 5, "Kd:  ", pData.Kd[0]);
+LiquidLine backLine(1, 0, "Back ^");
+LiquidLine currStateLine(1, 1, "State: ", currStateName);
+LiquidLine setTempLine(1, 2, "ST:  ", pData.setpoint[0]);
+LiquidLine setDurationLine(1, 3, "D:   ", pData.setDurationMinutes);
+LiquidLine setKpLine(1, 4, "Kp:  ", pData.Kp[0]);
+LiquidLine setKiLine(1, 5, "Ki:  ", pData.Ki[0]);
+LiquidLine setKdLine(1, 6, "Kd:  ", pData.Kd[0]);
 
-LiquidScreen screenOptions(currStateLine);
+LiquidScreen screenOptions(backLine);
 
 LiquidLine error1(0, 0, "Error, see log.");
 LiquidLine error2(0, 1, "Reset Device...");
@@ -391,25 +372,26 @@ void setup()
   initializeLCD();
 
   // Attach functions to lines for options
+  backLine.attach_function(FUNC_USE, goToMainScreen);
+
+  currStateLine.attach_function(FUNC_USE, startProcess);
+  currStateLine.attach_function(FUNC_SKIP, skipSubProcess);
+  currStateLine.attach_function(FUNC_BACK, returnToStandby);
+
   setTempLine.attach_function(FUNC_INCRT, incrementSetpoint);
-  setTempLine.attach_function(FUNC_DECRT, decrementSetpoint);
   setTempLine.attach_function(FUNC_USE, toggleToggler);
 
   setDurationLine.attach_function(FUNC_INCRT, incrementDuration);
-  setDurationLine.attach_function(FUNC_DECRT, decrementDuration);
   setDurationLine.attach_function(FUNC_USE, toggleToggler);
 
   setKpLine.attach_function(FUNC_INCRT, incrementKp);
-  setKpLine.attach_function(FUNC_DECRT, decrementKp);
   setKpLine.attach_function(FUNC_USE, toggleToggler);
 
   setKiLine.attach_function(FUNC_INCRT, incrementKi);
-  setKiLine.attach_function(FUNC_DECRT, decrementKi);
   setKiLine.attach_function(FUNC_USE, toggleToggler);
 
   setKdLine.attach_function(FUNC_INCRT, incrementKd);
-  setKdLine.attach_function(FUNC_DECRT, decrementKd);
-  setKdLine.attach_function(FUNC_USE, toggleToggler);
+  setKdLine.attach_function(FUNC_USE, toggleToggler); 
 
   // Set decimal places for main screen
   tempsLine.set_decimalPlaces(0);
@@ -424,10 +406,8 @@ void setup()
   setKiLine.set_decimalPlaces(2);
   setKdLine.set_decimalPlaces(2);
 
-  setDurationLine.attach_function(1, foofunc);
-  setKpLine.attach_function(1, foofunc);
-  setKiLine.attach_function(1, foofunc);
-  setKdLine.attach_function(1, foofunc);
+  // Set focus position for options screen
+  backLine.set_focusPosition(Position::LEFT);
   currStateLine.set_focusPosition(Position::LEFT);
   setTempLine.set_focusPosition(Position::LEFT);
   setDurationLine.set_focusPosition(Position::LEFT);
@@ -435,14 +415,14 @@ void setup()
   setKiLine.set_focusPosition(Position::LEFT);
   setKdLine.set_focusPosition(Position::LEFT);
 
+  // Add lines to the options screen
+  screenOptions.add_line(currStateLine);
   screenOptions.add_line(setTempLine);
   screenOptions.add_line(setDurationLine);
   screenOptions.add_line(setKpLine);
   screenOptions.add_line(setKiLine);
   screenOptions.add_line(setKdLine);
   screenOptions.set_displayLineCount(2);
-
-  currStateLine.attach_function(1, foofunc);
 
   initializeLcdGui();
 
@@ -519,7 +499,9 @@ void mainProgram()
 #endif // SERIALCMD
     if (pData.sdActive && (currentState == prepState || currentState == activeState))
     {
+#ifdef SDCARD
       logData(machine.getStateName());
+#endif
     }
   }
 }
@@ -972,7 +954,6 @@ void initializeDefaultProgramData(boolean full)
   pData.setDuration = DEF_HEATING_DURATION;
   pData.fileCount = 0;
 
-  // Set default values for all data related to each sensor
   for (int i = 0; i < NUM_SENSORS; i++)
   {
     pData.setSetpoint(i, DEF_SETPOINT, true);

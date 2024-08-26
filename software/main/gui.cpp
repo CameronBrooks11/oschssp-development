@@ -19,6 +19,18 @@ void toggleToggler()
     toggle = !toggle;
 }
 
+void goToMainScreen()
+{
+    menu.change_screen(&screenMain);
+    menu.set_focusedLine(0);
+}
+
+void goToOptionsScreen()
+{
+    menu.change_screen(&screenOptions);
+    menu.set_focusedLine(0);
+}
+
 void initializeLCD()
 {
     lcd.init();
@@ -40,8 +52,7 @@ void updateLcdGui()
     case EV_BTN_CLICKED:
         if (menu.get_currentScreen() == &screenMain)
         {
-            menu.change_screen(&screenOptions);
-            menu.set_focusedLine(0);
+            goToOptionsScreen();
         }
         else
         {
@@ -49,22 +60,32 @@ void updateLcdGui()
         }
         break;
     case EV_BTN_2CLICKED:
+        menu.call_function(FUNC_SKIP);
         break;
     case EV_BTN_HELD:
+        menu.call_function(FUNC_BACK);
         break;
     case EV_BTN_RELEASED:
         break;
     case EV_ENCUP:
         if (toggle == false)
+        {
             menu.switch_focus(false);
+        }
         else
+        {
             menu.call_function(FUNC_INCRT);
+        }
         break;
     case EV_ENCDN:
         if (toggle == false)
+        {
             menu.switch_focus(true);
+        }
         else
-            menu.call_function(FUNC_DECRT);
+        {
+            menu.call_function(FUNC_INCRT);
+        }
         break;
     default:
         break;
@@ -107,7 +128,7 @@ int16_t processEncoderEvents()
         direction = -direction;
 #endif
         uEvent = (direction == 1) ? EV_ENCDN : EV_ENCUP;
-        incr = abs(encNewPos - encLastPos);
+        incr = encNewPos - encLastPos;
         encLastPos = encNewPos;
     }
     else
