@@ -834,18 +834,6 @@ void handleSerialCommands()
           setPIDTuning(i, pData.getKp(i), pData.getKi(i), newKd);
         }
       }
-      else if (strcmp(received, "state=prep") == 0)
-      {
-        machine.transitionTo(prepState);
-      }
-      else if (strcmp(received, "state=active") == 0)
-      {
-        machine.transitionTo(activeState);
-      }
-      else if (strcmp(received, "state=term") == 0)
-      {
-        machine.transitionTo(termState);
-      }
       else if (strcmp(received, "prep") == 0)
       {
         SET_PREPARING();
